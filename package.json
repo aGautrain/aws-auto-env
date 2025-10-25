@@ -1,0 +1,28 @@
+{
+  "name": "aws-auto-env",
+  "version": "1.0.0",
+  "description": "An interactive REPL tool for managing AWS credentials in .env files by mapping environment file paths to AWS profiles",
+  "main": "aws-auto-env.js",
+  "bin": {
+    "aws-auto-env": "./aws-auto-env.js"
+  },
+  "scripts": {
+    "start": "node aws-auto-env.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "aws",
+    "env",
+    "credentials",
+    "repl",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}
