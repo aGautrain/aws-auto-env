@@ -1,0 +1,7 @@
+{
+  "mappings": {},
+  "logging": {
+    "enabled": false,
+    "logFile": "./aws-auto-env.log"
+  }
+}
