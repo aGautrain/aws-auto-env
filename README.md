@@ -9,6 +9,7 @@ An interactive REPL tool for managing AWS credentials in .env files by mapping e
 - Remove existing path/profile mappings
 - List available AWS profiles from local configuration
 - Display current settings configuration
+- Sync all .env files with AWS credentials from profiles
 - Configurable logging with file output
 - Enable/disable logging and configure log file path via REPL commands
 - Interactive command-line interface
@@ -74,6 +75,21 @@ settings
 
 Displays the current settings.json configuration, including all mappings and logging configuration.
 
+### Refresh Credentials
+
+```
+refresh
+```
+
+Syncs all mapped .env files with their associated AWS profile credentials. This command:
+
+- Checks if AWS CLI is available
+- Groups .env files by their AWS profile
+- Fetches credentials for each profile using AWS CLI
+- Updates or appends credentials in each .env file
+
+**Note:** Requires AWS CLI to be installed and configured.
+
 ### Enable Logging
 
 ```
@@ -130,6 +146,9 @@ $ aws-auto-env
 
 > settings
 # Display current settings configuration
+
+> refresh
+# Sync all .env files with AWS credentials
 
 > log enable
 # Enable logging

@@ -3,6 +3,7 @@
 const readline = require("readline");
 const settingsManager = require("./lib/settings-manager");
 const awsProfiles = require("./lib/aws-profiles");
+const awsCredentials = require("./lib/aws-credentials");
 const logger = require("./lib/logger");
 
 /**
@@ -171,6 +172,92 @@ function handleLog(args) {
 }
 
 /**
+ * Handles the 'refresh' command
+ * Syncs all mapped .env files with their AWS profile credentials
+ */
+function handleRefresh() {
+  try {
+    const mappings = settingsManager.getMappings();
+    const entries = Object.entries(mappings);
+
+    if (entries.length === 0) {
+      console.log(
+        "No mappings configured. Use 'add' to create mappings first."
+      );
+      return;
+    }
+
+    // Check if AWS CLI is available
+    if (!awsCredentials.isAwsCliAvailable()) {
+      console.log("Error: AWS CLI is not available.");
+      console.log("Please install AWS CLI to use this command.");
+      logger.logError("AWS CLI not available for refresh command");
+      return;
+    }
+
+    // Build a map of profile to list of filepaths
+    const profileToFiles = {};
+    entries.forEach(([envPath, profile]) => {
+      if (!profileToFiles[profile]) {
+        profileToFiles[profile] = [];
+      }
+      profileToFiles[profile].push(envPath);
+    });
+
+    console.log("\nRefreshing credentials...");
+    console.log("─".repeat(60));
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Process each profile
+    Object.entries(profileToFiles).forEach(([profile, filePaths]) => {
+      try {
+        // Get credentials for this profile
+        const credentials = awsCredentials.getCredentialsAsEnvVars(profile);
+
+        // Write credentials to each file mapped to this profile
+        filePaths.forEach((filePath) => {
+          try {
+            awsCredentials.writeCredentialsToFile(credentials, filePath);
+            console.log(`✓ Updated ${filePath} (${profile})`);
+            successCount++;
+          } catch (error) {
+            console.log(`✗ Failed to update ${filePath}: ${error.message}`);
+            logger.logError(
+              `Failed to write credentials to ${filePath}: ${error.message}`
+            );
+            errorCount++;
+          }
+        });
+      } catch (error) {
+        // Failed to get credentials for this profile
+        filePaths.forEach((filePath) => {
+          console.log(
+            `✗ Failed to update ${filePath}: Could not get credentials for profile "${profile}"`
+          );
+          errorCount++;
+        });
+        logger.logError(
+          `Failed to get credentials for profile "${profile}": ${error.message}`
+        );
+      }
+    });
+
+    console.log("─".repeat(60));
+    console.log(
+      `Refresh complete: ${successCount} succeeded, ${errorCount} failed`
+    );
+    logger.logCommand(
+      `refresh - ${successCount} succeeded, ${errorCount} failed`
+    );
+  } catch (error) {
+    console.log(`Error during refresh: ${error.message}`);
+    logger.logError(`Refresh command failed: ${error.message}`);
+  }
+}
+
+/**
  * Processes a command line input
  * @param {string} line - Input line
  * @param {readline.Interface} rl - Readline interface
@@ -211,6 +298,10 @@ function processCommand(line, rl) {
       handleLog(args);
       break;
 
+    case "refresh":
+      handleRefresh();
+      break;
+
     case "exit":
     case "quit":
       console.log("Goodbye!");
@@ -240,6 +331,7 @@ Available Commands:
   remove <env-path>            Remove a mapping
   profiles                     List available AWS profiles
   settings                     Display current settings
+  refresh                      Sync all .env files with AWS credentials
   log enable                   Enable logging
   log disable                  Disable logging
   log file <path>              Set log file path
@@ -300,6 +392,7 @@ module.exports = {
   handleProfiles,
   handleSettings,
   handleLog,
+  handleRefresh,
   processCommand,
   createInterface,
 };

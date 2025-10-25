@@ -7,16 +7,13 @@ const settingsManager = require('../lib/settings-manager');
 const logger = require('../lib/logger');
 
 describe('Logger', () => {
-  const TEST_LOG_FILE = path.join(__dirname, 'test-logs', 'test.log');
+  const TEST_LOG_FILE = path.join(__dirname, 'test-logs', 'aws-auto-env.test.log');
   const TEST_LOG_DIR = path.join(__dirname, 'test-logs');
 
   beforeEach(() => {
     // Clean up test log files
-    if (fs.existsSync(TEST_LOG_FILE)) {
-      fs.unlinkSync(TEST_LOG_FILE);
-    }
     if (fs.existsSync(TEST_LOG_DIR)) {
-      fs.rmdirSync(TEST_LOG_DIR);
+      fs.rmSync(TEST_LOG_DIR, { recursive: true, force: true });
     }
 
     // Clear all mocks
@@ -31,11 +28,8 @@ describe('Logger', () => {
 
   afterEach(() => {
     // Clean up
-    if (fs.existsSync(TEST_LOG_FILE)) {
-      fs.unlinkSync(TEST_LOG_FILE);
-    }
     if (fs.existsSync(TEST_LOG_DIR)) {
-      fs.rmdirSync(TEST_LOG_DIR);
+      fs.rmSync(TEST_LOG_DIR, { recursive: true, force: true });
     }
   });
 
