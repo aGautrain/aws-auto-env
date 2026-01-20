@@ -167,4 +167,127 @@ describe('Settings Manager', () => {
       expect(config.logFile).toBe('./new-log.log');
     });
   });
+
+  describe('Postman API key', () => {
+    test('should return null when no API key is set', () => {
+      const apiKey = settingsManager.getPostmanApiKey();
+      expect(apiKey).toBeNull();
+    });
+
+    test('should set and get Postman API key', () => {
+      settingsManager.setPostmanApiKey('test-api-key');
+
+      const settings = settingsManager.readSettings();
+      expect(settings.postman.apiKey).toBe('test-api-key');
+    });
+  });
+
+  describe('getPostmanMappings', () => {
+    test('should return empty object when no mappings exist', () => {
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings).toEqual({});
+    });
+
+    test('should return existing mappings', () => {
+      const testSettings = {
+        mappings: {},
+        postmanMappings: {
+          'env-id-1': { awsProfile: 'staging', environmentName: 'Staging' },
+          'env-id-2': { awsProfile: 'production', environmentName: 'Production' }
+        },
+        logging: { enabled: false, logFile: './test.log' }
+      };
+
+      fs.writeFileSync(TEST_SETTINGS_FILE, JSON.stringify(testSettings));
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-id-1'].awsProfile).toBe('staging');
+      expect(mappings['env-id-2'].awsProfile).toBe('production');
+    });
+  });
+
+  describe('addPostmanMapping', () => {
+    test('should add a new Postman mapping', () => {
+      settingsManager.addPostmanMapping('env-123', {
+        awsProfile: 'my-profile',
+        environmentName: 'My Environment'
+      });
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-123'].awsProfile).toBe('my-profile');
+      expect(mappings['env-123'].environmentName).toBe('My Environment');
+    });
+
+    test('should overwrite existing mapping', () => {
+      settingsManager.addPostmanMapping('env-123', {
+        awsProfile: 'old-profile',
+        environmentName: 'Old Env'
+      });
+      settingsManager.addPostmanMapping('env-123', {
+        awsProfile: 'new-profile',
+        environmentName: 'New Env'
+      });
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-123'].awsProfile).toBe('new-profile');
+      expect(mappings['env-123'].environmentName).toBe('New Env');
+    });
+
+    test('should allow multiple environments to map to same profile', () => {
+      settingsManager.addPostmanMapping('env-multi-1', {
+        awsProfile: 'staging',
+        environmentName: 'Staging'
+      });
+      settingsManager.addPostmanMapping('env-multi-2', {
+        awsProfile: 'staging',
+        environmentName: 'Sandbox'
+      });
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-multi-1'].awsProfile).toBe('staging');
+      expect(mappings['env-multi-2'].awsProfile).toBe('staging');
+    });
+  });
+
+  describe('removePostmanMapping', () => {
+    test('should remove existing Postman mapping', () => {
+      settingsManager.addPostmanMapping('env-123', {
+        awsProfile: 'my-profile',
+        environmentName: 'My Env'
+      });
+
+      const removed = settingsManager.removePostmanMapping('env-123');
+      expect(removed).toBe(true);
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-123']).toBeUndefined();
+    });
+
+    test('should return false when mapping does not exist', () => {
+      const removed = settingsManager.removePostmanMapping('nonexistent');
+      expect(removed).toBe(false);
+    });
+  });
+
+  describe('updatePostmanMappingName', () => {
+    test('should update environment name', () => {
+      settingsManager.addPostmanMapping('env-123', {
+        awsProfile: 'my-profile',
+        environmentName: 'Old Name'
+      });
+
+      settingsManager.updatePostmanMappingName('env-123', 'New Name');
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['env-123'].environmentName).toBe('New Name');
+      expect(mappings['env-123'].awsProfile).toBe('my-profile');
+    });
+
+    test('should do nothing for nonexistent mapping', () => {
+      settingsManager.updatePostmanMappingName('nonexistent', 'Name');
+
+      const mappings = settingsManager.getPostmanMappings();
+      expect(mappings['nonexistent']).toBeUndefined();
+    });
+  });
 });
