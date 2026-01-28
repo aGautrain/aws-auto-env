@@ -241,8 +241,8 @@ describe("AWS Auto Env REPL", () => {
     });
   });
 
-  describe("handleRefresh", () => {
-    test("should refresh all mapped files with credentials", () => {
+  describe("handleSync", () => {
+    test("should sync all mapped files with credentials and show updated", () => {
       jest.spyOn(awsCredentials, "isAwsCliAvailable").mockReturnValue(true);
       jest.spyOn(settingsManager, "getMappings").mockReturnValue({
         "./app.env": "production",
@@ -260,19 +260,38 @@ describe("AWS Auto Env REPL", () => {
         });
       const writeCredsSpy = jest
         .spyOn(awsCredentials, "writeCredentialsToFile")
-        .mockImplementation(() => {});
+        .mockImplementation(() => ({ changed: true }));
 
-      app.handleRefresh();
+      app.handleSync();
 
       expect(writeCredsSpy).toHaveBeenCalledTimes(2);
-      expect(consoleOutput.join("\n")).toContain("Refreshing credentials");
-      expect(consoleOutput.join("\n")).toContain("succeeded");
+      expect(consoleOutput.join("\n")).toContain("Syncing credentials");
+      expect(consoleOutput.join("\n")).toContain("2 updated");
+    });
+
+    test("should show unchanged when credentials did not change", () => {
+      jest.spyOn(awsCredentials, "isAwsCliAvailable").mockReturnValue(true);
+      jest.spyOn(settingsManager, "getMappings").mockReturnValue({
+        "./app.env": "production",
+      });
+      jest.spyOn(awsCredentials, "getCredentialsAsEnvVars").mockReturnValue({
+        AWS_ACCESS_KEY_ID: "KEY",
+        AWS_SECRET_ACCESS_KEY: "SECRET",
+      });
+      jest
+        .spyOn(awsCredentials, "writeCredentialsToFile")
+        .mockImplementation(() => ({ changed: false }));
+
+      app.handleSync();
+
+      expect(consoleOutput.join("\n")).toContain("○ Unchanged");
+      expect(consoleOutput.join("\n")).toContain("0 updated, 1 unchanged");
     });
 
     test("should show error when AWS CLI is not available", () => {
       jest.spyOn(awsCredentials, "isAwsCliAvailable").mockReturnValue(false);
 
-      app.handleRefresh();
+      app.handleSync();
 
       expect(consoleOutput.join("\n")).toContain("AWS CLI is not available");
     });
@@ -281,7 +300,7 @@ describe("AWS Auto Env REPL", () => {
       jest.spyOn(awsCredentials, "isAwsCliAvailable").mockReturnValue(true);
       jest.spyOn(settingsManager, "getMappings").mockReturnValue({});
 
-      app.handleRefresh();
+      app.handleSync();
 
       expect(consoleOutput.join("\n")).toContain("No mappings configured");
     });
@@ -297,7 +316,7 @@ describe("AWS Auto Env REPL", () => {
           throw new Error("Profile not found");
         });
 
-      app.handleRefresh();
+      app.handleSync();
 
       expect(consoleOutput.join("\n")).toContain("Could not get credentials");
       expect(consoleOutput.join("\n")).toContain("failed");
@@ -318,7 +337,7 @@ describe("AWS Auto Env REPL", () => {
           throw new Error("Write failed");
         });
 
-      app.handleRefresh();
+      app.handleSync();
 
       expect(consoleOutput.join("\n")).toContain("Failed to update");
       expect(consoleOutput.join("\n")).toContain("failed");
@@ -343,15 +362,15 @@ describe("AWS Auto Env REPL", () => {
         });
       const writeCredsSpy = jest
         .spyOn(awsCredentials, "writeCredentialsToFile")
-        .mockImplementation(() => {});
+        .mockImplementation(() => ({ changed: true }));
 
-      app.handleRefresh();
+      app.handleSync();
 
       // Should call getCredentialsAsEnvVars only twice (once per profile)
       expect(awsCredentials.getCredentialsAsEnvVars).toHaveBeenCalledTimes(2);
       // Should call writeCredentialsToFile three times (once per file)
       expect(writeCredsSpy).toHaveBeenCalledTimes(3);
-      expect(consoleOutput.join("\n")).toContain("3 succeeded");
+      expect(consoleOutput.join("\n")).toContain("3 updated");
     });
   });
 
@@ -413,12 +432,12 @@ describe("AWS Auto Env REPL", () => {
       expect(consoleOutput.join("\n")).toContain("Logging enabled");
     });
 
-    test("should handle refresh command", () => {
+    test("should handle sync command", () => {
       jest.spyOn(awsCredentials, "isAwsCliAvailable").mockReturnValue(true);
       jest.spyOn(settingsManager, "getMappings").mockReturnValue({});
 
       const mockRl = { close: jest.fn() };
-      app.processCommand("refresh", mockRl);
+      app.processCommand("sync", mockRl);
 
       expect(consoleOutput.join("\n")).toContain("No mappings configured");
     });

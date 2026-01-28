@@ -372,5 +372,65 @@ EXISTING_VAR=VALUE`;
       const content = fs.readFileSync(TEST_FILE, "utf8");
       expect(content).toBe(initialContent);
     });
+
+    test("should return changed: true when values are updated", () => {
+      // Create initial file
+      const initialContent = `AWS_ACCESS_KEY_ID=OLD_KEY`;
+
+      fs.mkdirSync(TEST_DIR, { recursive: true });
+      fs.writeFileSync(TEST_FILE, initialContent, "utf8");
+
+      const credentials = {
+        AWS_ACCESS_KEY_ID: "NEW_KEY",
+      };
+
+      const result = awsCredentials.writeCredentialsToFile(credentials, TEST_FILE);
+
+      expect(result.changed).toBe(true);
+    });
+
+    test("should return changed: true when new keys are added", () => {
+      // Create initial file
+      const initialContent = `EXISTING_VAR=VALUE`;
+
+      fs.mkdirSync(TEST_DIR, { recursive: true });
+      fs.writeFileSync(TEST_FILE, initialContent, "utf8");
+
+      const credentials = {
+        AWS_ACCESS_KEY_ID: "NEW_KEY",
+      };
+
+      const result = awsCredentials.writeCredentialsToFile(credentials, TEST_FILE);
+
+      expect(result.changed).toBe(true);
+    });
+
+    test("should return changed: false when values are the same", () => {
+      // Create initial file
+      const initialContent = `AWS_ACCESS_KEY_ID=SAME_KEY
+AWS_SECRET_ACCESS_KEY=SAME_SECRET`;
+
+      fs.mkdirSync(TEST_DIR, { recursive: true });
+      fs.writeFileSync(TEST_FILE, initialContent, "utf8");
+
+      const credentials = {
+        AWS_ACCESS_KEY_ID: "SAME_KEY",
+        AWS_SECRET_ACCESS_KEY: "SAME_SECRET",
+      };
+
+      const result = awsCredentials.writeCredentialsToFile(credentials, TEST_FILE);
+
+      expect(result.changed).toBe(false);
+    });
+
+    test("should return changed: true when creating new file", () => {
+      const credentials = {
+        AWS_ACCESS_KEY_ID: "NEW_KEY",
+      };
+
+      const result = awsCredentials.writeCredentialsToFile(credentials, TEST_FILE);
+
+      expect(result.changed).toBe(true);
+    });
   });
 });

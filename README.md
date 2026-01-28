@@ -87,10 +87,10 @@ settings
 
 Displays the current settings.json configuration, including all mappings and logging configuration.
 
-### Refresh Credentials
+### Sync Credentials
 
 ```
-refresh
+sync
 ```
 
 Syncs all mapped .env files with their associated AWS profile credentials. This command:
@@ -207,7 +207,7 @@ Syncs AWS credentials to Postman environments. Updates the following variables i
 
 - `environment-id`: Optional - sync only a specific environment. Omit to sync all mapped environments.
 
-**Auto-Login:** Like the `refresh` command, if AWS SSO credentials have expired, the tool will automatically trigger AWS SSO login and retry.
+**Auto-Login:** Like the `sync` command, if AWS SSO credentials have expired, the tool will automatically trigger AWS SSO login and retry.
 
 **Note:** Preserves all existing non-AWS variables in the Postman environment.
 
@@ -234,7 +234,7 @@ $ aws-auto-env
 > profiles
 # View available AWS profiles
 
-> refresh
+> sync
 # Sync all .env files with AWS credentials (auto-login if expired)
 
 > postman key PMAK-xxxxx

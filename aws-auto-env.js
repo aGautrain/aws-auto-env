@@ -173,10 +173,10 @@ function handleLog(args) {
 }
 
 /**
- * Handles the 'refresh' command
+ * Handles the 'sync' command
  * Syncs all mapped .env files with their AWS profile credentials
  */
-function handleRefresh() {
+function handleSync() {
   try {
     const mappings = settingsManager.getMappings();
     const entries = Object.entries(mappings);
@@ -192,7 +192,7 @@ function handleRefresh() {
     if (!awsCredentials.isAwsCliAvailable()) {
       console.log("Error: AWS CLI is not available.");
       console.log("Please install AWS CLI to use this command.");
-      logger.logError("AWS CLI not available for refresh command");
+      logger.logError("AWS CLI not available for sync command");
       return;
     }
 
@@ -205,10 +205,11 @@ function handleRefresh() {
       profileToFiles[profile].push(envPath);
     });
 
-    console.log("\nRefreshing credentials...");
+    console.log("\nSyncing credentials...");
     console.log("─".repeat(60));
 
-    let successCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
     let errorCount = 0;
 
     // Process each profile
@@ -220,9 +221,14 @@ function handleRefresh() {
         // Write credentials to each file mapped to this profile
         filePaths.forEach((filePath) => {
           try {
-            awsCredentials.writeCredentialsToFile(credentials, filePath);
-            console.log(`✓ Updated ${filePath} (${profile})`);
-            successCount++;
+            const result = awsCredentials.writeCredentialsToFile(credentials, filePath);
+            if (result.changed) {
+              console.log(`✓ Updated ${filePath} (${profile})`);
+              updatedCount++;
+            } else {
+              console.log(`○ Unchanged ${filePath} (${profile})`);
+              unchangedCount++;
+            }
           } catch (error) {
             console.log(`✗ Failed to update ${filePath}: ${error.message}`);
             logger.logError(
@@ -247,14 +253,14 @@ function handleRefresh() {
 
     console.log("─".repeat(60));
     console.log(
-      `Refresh complete: ${successCount} succeeded, ${errorCount} failed`
+      `Sync complete: ${updatedCount} updated, ${unchangedCount} unchanged, ${errorCount} failed`
     );
     logger.logCommand(
-      `refresh - ${successCount} succeeded, ${errorCount} failed`
+      `sync - ${updatedCount} updated, ${unchangedCount} unchanged, ${errorCount} failed`
     );
   } catch (error) {
-    console.log(`Error during refresh: ${error.message}`);
-    logger.logError(`Refresh command failed: ${error.message}`);
+    console.log(`Error during sync: ${error.message}`);
+    logger.logError(`Sync command failed: ${error.message}`);
   }
 }
 
@@ -453,7 +459,8 @@ async function handlePostmanSync(specificEnvId) {
     console.log("\nSyncing to Postman environments...");
     console.log("─".repeat(60));
 
-    let successCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
     let errorCount = 0;
 
     for (const [environmentId, config] of entries) {
@@ -480,8 +487,13 @@ async function handlePostmanSync(specificEnvId) {
         }
 
         const displayName = result.environmentName || config.environmentName || environmentId;
-        console.log(`✓ Updated ${displayName} (${config.awsProfile})`);
-        successCount++;
+        if (result.changed) {
+          console.log(`✓ Updated ${displayName} (${config.awsProfile})`);
+          updatedCount++;
+        } else {
+          console.log(`○ Unchanged ${displayName} (${config.awsProfile})`);
+          unchangedCount++;
+        }
       } catch (error) {
         const displayName = config.environmentName || environmentId;
         console.log(`✗ Failed to update ${displayName} (${config.awsProfile}): ${error.message}`);
@@ -491,8 +503,8 @@ async function handlePostmanSync(specificEnvId) {
     }
 
     console.log("─".repeat(60));
-    console.log(`Sync complete: ${successCount} succeeded, ${errorCount} failed`);
-    logger.logCommand(`postman sync - ${successCount} succeeded, ${errorCount} failed`);
+    console.log(`Sync complete: ${updatedCount} updated, ${unchangedCount} unchanged, ${errorCount} failed`);
+    logger.logCommand(`postman sync - ${updatedCount} updated, ${unchangedCount} unchanged, ${errorCount} failed`);
   } catch (error) {
     console.log(`Error during sync: ${error.message}`);
     logger.logError(`Postman sync command failed: ${error.message}`);
@@ -579,8 +591,8 @@ async function processCommand(line, rl) {
       handleLog(args);
       break;
 
-    case "refresh":
-      handleRefresh();
+    case "sync":
+      handleSync();
       break;
 
     case "postman":
@@ -616,7 +628,7 @@ Available Commands:
   remove <env-path>            Remove a .env mapping
   profiles                     List available AWS profiles
   settings                     Display current settings
-  refresh                      Sync all .env files with AWS credentials
+  sync                         Sync all .env files with AWS credentials
   log enable                   Enable logging
   log disable                  Disable logging
   log file <path>              Set log file path
@@ -699,7 +711,7 @@ module.exports = {
   handleProfiles,
   handleSettings,
   handleLog,
-  handleRefresh,
+  handleSync,
   handlePostman,
   handlePostmanKey,
   handlePostmanEnvs,
