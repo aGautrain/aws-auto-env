@@ -136,13 +136,25 @@ Available Postman environments:
   ...
 ```
 
-### 2. List your AWS profiles
+### 2. Postman environment variables
+
+The sync will create/update the following variables in your Postman environment:
+
+| Variable Name | Description |
+|---------------|-------------|
+| `aws_access_key_id` | AWS access key ID |
+| `aws_access_secret` | AWS secret access key |
+| `aws_session_token` | AWS session token (for temporary credentials) |
+
+You can reference these variables in your Postman requests using `{{aws_access_key_id}}`, `{{aws_access_secret}}`, and `{{aws_session_token}}`.
+
+### 3. List your AWS profiles
 
 ```bash
 > profiles
 ```
 
-### 3. Map environments to profiles
+### 4. Map environments to profiles
 
 ```bash
 > postman add <environment-id> <aws-profile>
@@ -155,7 +167,7 @@ Example:
 > postman add xyz789-abc123-456 staging
 ```
 
-### 4. Verify your mappings
+### 5. Verify your mappings
 
 ```bash
 > postman list
@@ -163,7 +175,15 @@ Example:
 
 ## Sync Credentials
 
-### Manual sync
+### Manual sync (from anywhere)
+
+Once your alias is set up, you can sync credentials with a single command from any directory:
+
+```bash
+aws-auto-env postman sync
+```
+
+Or from the interactive mode:
 
 ```bash
 aws-auto-env
