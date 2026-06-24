@@ -385,16 +385,19 @@ describe("Postman API", () => {
         key: "aws_access_key_id",
         value: "new-key-id",
         enabled: true,
+        type: "secret",
       });
       expect(putRequestBody.environment.values).toContainEqual({
         key: "aws_access_secret",
         value: "new-secret",
         enabled: true,
+        type: "secret",
       });
       expect(putRequestBody.environment.values).toContainEqual({
         key: "aws_session_token",
         value: "new-token",
         enabled: true,
+        type: "secret",
       });
 
       // Verify old AWS values are not present
@@ -404,6 +407,93 @@ describe("Postman API", () => {
       expect(
         putRequestBody.environment.values.filter((v) => v.value === "old-secret")
       ).toHaveLength(0);
+    });
+
+    test("should delete AWS variables before recreating them (two-phase update)", async () => {
+      postmanApi.setApiKey("test-api-key");
+
+      const existingEnvironment = {
+        id: "env-1",
+        name: "Development",
+        values: [
+          { key: "api_url", value: "https://api.dev.example.com", enabled: true },
+          { key: "aws_access_key_id", value: "old-key", enabled: true, type: "secret" },
+          { key: "aws_access_secret", value: "old-secret", enabled: true, type: "secret" },
+        ],
+      };
+
+      const putRequestBodies = [];
+
+      const mockGetResponse = {
+        statusCode: 200,
+        on: jest.fn((event, callback) => {
+          if (event === "data") {
+            callback(JSON.stringify({ environment: existingEnvironment }));
+          }
+          if (event === "end") {
+            callback();
+          }
+        }),
+      };
+
+      const mockPutResponse = {
+        statusCode: 200,
+        on: jest.fn((event, callback) => {
+          if (event === "data") {
+            callback(JSON.stringify({ environment: { id: "env-1", name: "Development" } }));
+          }
+          if (event === "end") {
+            callback();
+          }
+        }),
+      };
+
+      const mockRequest = {
+        on: jest.fn(),
+        write: jest.fn((body) => {
+          putRequestBodies.push(JSON.parse(body));
+        }),
+        end: jest.fn(),
+      };
+
+      https.request.mockImplementation((options, callback) => {
+        if (options.method === "GET") {
+          callback(mockGetResponse);
+        } else if (options.method === "PUT") {
+          callback(mockPutResponse);
+        }
+        return mockRequest;
+      });
+
+      await postmanApi.updateAwsCredentials("env-1", {
+        aws_access_key_id: "new-key-id",
+        aws_access_secret: "new-secret",
+        aws_session_token: "new-token",
+      });
+
+      // Two PUTs should have been made
+      expect(putRequestBodies).toHaveLength(2);
+
+      // First PUT removes all AWS variables (reset phase)
+      const firstPutKeys = putRequestBodies[0].environment.values.map((v) => v.key);
+      expect(firstPutKeys).toContain("api_url");
+      expect(firstPutKeys).not.toContain("aws_access_key_id");
+      expect(firstPutKeys).not.toContain("aws_access_secret");
+      expect(firstPutKeys).not.toContain("aws_session_token");
+
+      // Second PUT recreates them with the new values
+      expect(putRequestBodies[1].environment.values).toContainEqual({
+        key: "aws_access_key_id",
+        value: "new-key-id",
+        enabled: true,
+        type: "secret",
+      });
+      expect(putRequestBodies[1].environment.values).toContainEqual({
+        key: "aws_session_token",
+        value: "new-token",
+        enabled: true,
+        type: "secret",
+      });
     });
 
     test("should throw error when environment ID is not provided", async () => {
